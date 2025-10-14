@@ -1,16 +1,24 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc, query, where} from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { Text, View, TextInput, Pressable, FlatList, Image, Button } from "react-native";
 import { db, auth } from '../../firebaseConfig';
 import { signOut } from "firebase/auth";
 
-export default function App() {
+export default function App({ usuario }) { // inserindo usuario de navigation
     const [mensagens, setMensagens] = useState<any[]>([]);
     const [novoTexto, setNovoTexto] = useState("");
 
     // Leitura em tempo real
     useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, "mensagens"), (snapshot) => {
+        // sabendo qual usuario com uid
+        const user = auth.currentUser;
+        if(!user){
+            return;
+        }
+
+        const q = query(collection(db, "mensagens"), where("uid", "==", user.uid));
+
+        const unsubscribe = onSnapshot( q, (snapshot) => {
             const lista: any[] = [];
             snapshot.forEach((doc) => {
                 lista.push({ id: doc.id, ...doc.data() });
@@ -20,30 +28,37 @@ export default function App() {
         return () => unsubscribe();
     }, []);
 
-    // Criar mensagem
+    // Criar tarefa
     const adicionarMensagem = async () => {
         if (novoTexto.trim() === "") return;
-        await addDoc(collection(db, "mensagens"), {
-            texto: novoTexto,
-            data: new Date().toISOString(),
-        });
-        setNovoTexto("");
+        try {
+            await addDoc(collection(db, "mensagens"), {
+                texto: novoTexto,
+                data: new Date().toISOString(),
+                uid: usuario.uid, //associa usuario vindo da navegacao
+            });
+            setNovoTexto("");
+
+        } catch (error) {
+            console.log("Erro: " + error)
+        }
+
     };
 
-    // Atualizar mensagem
+    // Atualizar tarefa
     const atualizarMensagem = async (id: string) => {
         const docRef = doc(db, "mensagens", id);
         await updateDoc(docRef, { texto: "Atualizado!" });
     };
 
-    // Deletar mensagem
+    // Deletar tarefa
     const deletarMensagem = async (id: string) => {
         const docRef = doc(db, "mensagens", id);
         await deleteDoc(docRef);
     };
 
     return (
-        <View style={{ flex: 1, padding: 20, backgroundColor: "lightpink"  }}>
+        <View style={{ flex: 1, padding: 20, backgroundColor: "lightpink" }}>
             <Image style={{ width: 350, height: 190 }} source={require("../../assets/necohome.gif")}></Image>
             <Text style={{ flex: 0, fontSize: 30, fontWeight: "bold", marginBottom: 20, color: "white" }}>
                 ..::Tarefas::..
@@ -59,8 +74,9 @@ export default function App() {
                     borderRadius: 5,
                 }}
             />
-            <Pressable style={{width:200,borderRadius: 10, padding: 4, marginBottom: 30, justifyContent: 'center', alignItems: 'center', alignContent: 'center', backgroundColor: 'lightgreen'
-        }} onPress={adicionarMensagem}><Text style={{fontSize: 18, fontWeight: 'bold', color: 'white'}}>Adicionar Tarefa</Text></Pressable>
+            <Pressable style={{
+                width: 200, borderRadius: 10, padding: 4, marginBottom: 30, justifyContent: 'center', alignItems: 'center', alignContent: 'center', backgroundColor: 'lightgreen'
+            }} onPress={adicionarMensagem}><Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>Adicionar Tarefa</Text></Pressable>
             <FlatList
                 data={mensagens}
                 keyExtractor={(item) => item.id}
@@ -81,8 +97,9 @@ export default function App() {
                     </View>
                 )}
             />
-            <Pressable style={{width: 100, borderRadius: 10, padding: 4, marginBottom: 30, justifyContent: 'center', alignItems: 'center', alignContent: 'center', backgroundColor: 'lightgreen'
-        }} onPress={() => signOut(auth)}><Text style={{fontSize: 18, fontWeight: 'bold', color: 'white'}}>SAIR</Text></Pressable>
+            <Pressable style={{
+                width: 100, borderRadius: 10, padding: 4, marginBottom: 30, justifyContent: 'center', alignItems: 'center', alignContent: 'center', backgroundColor: 'lightgreen'
+            }} onPress={() => signOut(auth)}><Text style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>SAIR</Text></Pressable>
         </View>
     )
 }

@@ -21,7 +21,7 @@ export default function Navigator() {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return null; // aqui entraria uma Splash Screen
+  if (loading) return null;
 
   return (
     <NavigationContainer>
